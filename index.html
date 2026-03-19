@@ -3,157 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schul-Plan Mobile</title>
+    <title>Lehrer-Plan Mobil</title>
     <style>
         :root {
             --bg: #0f172a; --panel: #1e293b; --text: #f8fafc;
             --accent: #38bdf8; --highlight: #22c55e;
-            --warning: #ef4444; --pause: #f59e0b;
+            --k11: #a855f7; /* Violett für 11. Klasse */
+            --glass: rgba(255, 255, 255, 0.05);
         }
         * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; line-height: 1.4; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
 
-        header {
-            background: var(--panel); padding: 15px; border-radius: 15px;
-            border-bottom: 3px solid var(--accent); margin-bottom: 15px; text-align: center;
-        }
-        .live-time { font-size: 2.2rem; font-weight: 800; }
+        header { text-align: center; padding: 20px; background: var(--panel); border-radius: 15px; margin-bottom: 20px; border-bottom: 4px solid var(--accent); }
+        .time { font-size: 2.5rem; font-weight: 800; }
         
-        #msg-ticker {
-            background: var(--accent); color: var(--bg); padding: 12px;
-            border-radius: 10px; font-weight: 700; text-align: center;
-            margin-bottom: 20px; font-size: 0.9rem; text-transform: uppercase;
-        }
+        #quote-display { background: var(--accent); color: var(--bg); padding: 10px; border-radius: 8px; text-align: center; font-weight: 700; margin-bottom: 20px; font-size: 0.9rem; }
 
-        h2 { color: var(--accent); font-size: 1.1rem; text-transform: uppercase; margin: 25px 0 10px 5px; border-left: 4px solid var(--accent); padding-left: 10px; }
+        h2 { color: var(--accent); font-size: 1.2rem; text-transform: uppercase; margin-top: 30px; border-left: 4px solid var(--accent); padding-left: 10px; }
 
-        .card { background: var(--panel); border-radius: 12px; padding: 12px; margin-bottom: 15px; }
+        /* Lehrer Karten */
+        .lehrer-card { background: var(--panel); border-radius: 15px; padding: 15px; margin-bottom: 15px; position: relative; border-left: 5px solid transparent; }
+        .is-present { border-left-color: var(--highlight); }
+        .is-teaching-11 { border-left-color: var(--k11); box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
 
-        /* Lehrer Wochen-Style */
-        .lehrer-card { border-left: 4px solid var(--highlight); margin-bottom: 10px; }
-        .lehrer-name { font-weight: 800; font-size: 1rem; display: block; }
-        .lehrer-info { font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px; }
-        .day-badge { 
-            display: inline-block; font-size: 0.7rem; padding: 2px 6px; 
-            border-radius: 4px; margin-right: 3px; background: rgba(255,255,255,0.1); 
-        }
-        .has-time { background: var(--highlight) !important; color: white; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; background: #444; }
+        .dot-online { background: var(--highlight); box-shadow: 0 0 8px var(--highlight); }
 
-        /* Tabellen Scrollbar für Mobile */
-        .scroll-box { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 20px; border-radius: 10px; background: #000; }
-        table { width: 100%; border-collapse: collapse; min-width: 450px; }
-        th, td { padding: 8px; text-align: center; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1); }
-        th { background: var(--panel); color: var(--accent); position: sticky; left: 0; }
-        .active-day { background: rgba(56, 189, 248, 0.15); }
-        .is-today { color: var(--highlight); font-weight: bold; }
+        .lehrer-name { font-size: 1.1rem; font-weight: 800; }
+        .lehrer-sub { font-size: 0.85rem; opacity: 0.7; margin-bottom: 10px; }
+
+        .badge-11 { background: var(--k11); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 900; float: right; }
+
+        /* Mini Wochenplan im Lehrer-Feld */
+        .mini-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 10px; }
+        .day-box { background: var(--glass); text-align: center; padding: 5px; border-radius: 5px; font-size: 0.7rem; color: #888; }
+        .day-active { background: rgba(34, 197, 94, 0.2); color: var(--highlight); font-weight: bold; }
+
     </style>
 </head>
 <body>
 
 <header>
-    <div id="live-date">---</div>
-    <div class="live-time" id="h-m">00:00</div>
+    <div id="date-display" style="opacity: 0.6; font-size: 0.9rem;">---</div>
+    <div class="time" id="clock">00:00</div>
 </header>
 
-<div id="msg-ticker">Lade Zitate...</div>
+<div id="quote-display">Lade Zitat...</div>
 
-<section id="lehrer-section">
-    <h2>Lehrer Präsenz (Woche)</h2>
-    <div id="lehrer-list"></div>
-</section>
-
-<section id="plaene-section">
-    <h2>Stundenpläne</h2>
-    
-    <div id="plans-container">
-        </div>
+<section id="live-section">
+    <h2>Lehrer Live-Status</h2>
+    <div id="lehrer-container">Wird geladen...</div>
 </section>
 
 <script>
-    const quotes = ["Focus on.", "Stay focused.", "Viel Erfolg heute.", "Dummheit ist auch eine Begabung.", "Vertrauen ist gut - Kontrolle ist besser"];
-    let currentQuote = quotes[0];
+    const quotes = ["Focus on.", "Viel Erfolg!", "Dummheit ist eine Begabung.", "Vertrauen ist gut, Kontrolle ist besser."];
     let SCHOOL_DATA = {};
     const daysShort = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-    const slots = [
-        { s: "08:30", e: "09:00" }, { s: "09:10", e: "09:40" }, { s: "09:50", e: "10:20" }, 
-        { s: "10:30", e: "11:00" }, { s: "11:10", e: "11:40" }, { s: "11:50", e: "12:20" }, 
-        { s: "12:30", e: "13:00" }, { s: "13:00", e: "13:35", label: "PAUSE" },
-        { s: "13:40", e: "14:10" }, { s: "14:15", e: "14:45" }, { s: "14:55", e: "15:25" }, { s: "15:30", e: "16:00" }
-    ];
 
-    async function init() {
+    function timeToMin(t) {
+        if(!t || !t.includes(':')) return -1;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    }
+
+    async function loadData() {
         try {
-            const resp = await fetch('data.json?t=' + Date.now());
-            SCHOOL_DATA = await resp.json();
+            const r = await fetch('data.json?t=' + Date.now());
+            SCHOOL_DATA = await r.json();
             renderLehrer();
-            renderTables();
-            updateLive();
-        } catch (e) { console.error("Datenfehler"); }
+        } catch(e) { console.error("Fehler"); }
     }
 
     function renderLehrer() {
-        const container = document.getElementById('lehrer-list');
-        let html = "";
-        (SCHOOL_DATA.lehrerPlan || []).forEach(l => {
-            html += `<div class="card lehrer-card">
-                <span class="lehrer-name">${l.name}</span>
-                <div class="lehrer-info">${l.fach}</div>
-                <div>`;
-            for(let d=1; d<=5; d++) {
-                const isPresent = l.zeiten?.[d] && l.zeiten[d].some(z => z[0] !== "");
-                html += `<span class="day-badge ${isPresent?'has-time':''}">${daysShort[d]}</span>`;
-            }
-            html += `</div></div>`;
-        });
-        container.innerHTML = html;
-    }
-
-    function renderTables() {
-        const container = document.getElementById('plans-container');
-        const today = new Date().getDay();
-        let html = "";
-
-        ["10", "11", "12"].forEach(classId => {
-            html += `<h3 style="margin-left:5px; font-size:0.9rem; opacity:0.8;">KLASSE ${classId}</h3>
-                     <div class="scroll-box"><table><thead><tr><th>Zeit</th>`;
-            for(let d=1; d<=5; d++) {
-                html += `<th class="${d===today?'is-today':''}">${daysShort[d]}</th>`;
-            }
-            html += `</tr></thead><tbody>`;
-            
-            slots.forEach(slot => {
-                html += `<tr><th>${slot.s}</th>`;
-                if(slot.label) {
-                    html += `<td colspan="5" style="color:var(--pause); font-weight:bold;">${slot.label}</td>`;
-                } else {
-                    for(let d=1; d<=5; d++) {
-                        const cell = SCHOOL_DATA.fullSchedules[classId]?.[d]?.[slot.s] || "";
-                        html += `<td class="${d===today?'active-day':''}">${cell}</td>`;
-                    }
-                }
-                html += `</tr>`;
-            });
-            html += `</tbody></table></div>`;
-        });
-        container.innerHTML = html;
-    }
-
-    function updateLive() {
         const now = new Date();
-        document.getElementById('h-m').textContent = now.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
-        document.getElementById('live-date').textContent = now.toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'short'});
+        const curMin = now.getHours() * 60 + now.getMinutes();
+        const today = now.getDay(); // 1=Mo, 2=Di...
         
-        // Zitat Update
-        const h = now.getHours();
-        const ticker = document.getElementById('msg-ticker');
-        if (h >= 16) ticker.textContent = "Schönen Feierabend!";
-        else ticker.textContent = currentQuote;
+        const container = document.getElementById('lehrer-container');
+        let html = "";
+
+        (SCHOOL_DATA.lehrerPlan || []).forEach(l => {
+            let isPresent = false;
+            let teaching11 = false;
+            
+            // Check ob JETZT da
+            if(l.zeiten && l.zeiten[today]) {
+                l.zeiten[today].forEach(z => {
+                    const s = timeToMin(z[0]), e = timeToMin(z[1]);
+                    if(curMin >= s && curMin < e) {
+                        isPresent = true;
+                        if(z[2] === "11") teaching11 = true;
+                    }
+                });
+            }
+
+            html += `
+                <div class="lehrer-card ${isPresent ? 'is-present' : ''} ${teaching11 ? 'is-teaching-11' : ''}">
+                    ${teaching11 ? '<span class="badge-11">JETZT BEI KLASSE 11</span>' : ''}
+                    <div class="lehrer-name">
+                        <span class="status-dot ${isPresent ? 'dot-online' : ''}"></span>
+                        ${l.name}
+                    </div>
+                    <div class="lehrer-sub">${l.fach}</div>
+                    
+                    <div class="mini-grid">
+                        ${[1,2,3,4,5].map(d => `
+                            <div class="day-box ${l.zeiten && l.zeiten[d] && l.zeiten[d].some(z => z[0]!=='') ? 'day-active' : ''}">
+                                ${daysShort[d]}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
     }
 
-    setInterval(updateLive, 1000);
-    setInterval(() => { currentQuote = quotes[Math.floor(Math.random() * quotes.length)]; }, 30000);
-    
-    init();
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('date-display').textContent = now.toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'short'});
+        
+        // Zitat alle 30 Sek wechseln
+        if(now.getSeconds() % 30 === 0) {
+            document.getElementById('quote-display').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+        }
+    }
+
+    setInterval(updateTime, 1000);
+    setInterval(loadData, 30000);
+    loadData();
+    updateTime();
+    document.getElementById('quote-display').textContent = quotes[0];
 </script>
 </body>
 </html>
